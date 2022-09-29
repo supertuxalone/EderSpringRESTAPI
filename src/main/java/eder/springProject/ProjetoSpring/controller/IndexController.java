@@ -29,7 +29,7 @@ public class IndexController {
 	// dependendo do url que foi informada pelo usuario é metodo que vai ser chamado
 	// get Mapping que retona um registro ao se passar o id especifico
 	// http://localhost:8080/usuario/15
-	@GetMapping(value = "/{id}", produces = "application/json")
+	@GetMapping(value = "/{id}", produces = "application/json",  headers = "x-api-key=1")
 	public ResponseEntity<user> userparams(@PathVariable(value = "id") Long id) {
 
 		/*
@@ -86,7 +86,16 @@ public class IndexController {
 		}
 		
 		/*incluir outra rotinas antes de atualizar*/
-		
+		user usertmp = userRepository.findUserByLogin(users.getLogin());
+
+		/* verificar se a senha que estiver vindo foi atulizada */
+		if (!usertmp.getSenha().equals(users.getSenha())) {
+
+			/* criptografar senha antes de atualizar */
+			String keyBCrypt = new BCryptPasswordEncoder().encode(users.getSenha());
+			users.setSenha(keyBCrypt);
+
+		}
 		user usersave = userRepository.save(users);
 
 		return new ResponseEntity<user>(usersave, HttpStatus.OK);
