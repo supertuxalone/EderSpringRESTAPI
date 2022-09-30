@@ -115,10 +115,14 @@
 						//anotação que criar um id auto incrementeação no caso usando o atributo Id
 						private static final long serialVersionUID = 1L;
 						@Id
+						//como ele vai gerar o auto incremental
 						@GeneratedValue(strategy = GenerationType.AUTO)
 
 						private Long id;
+						
+						@Column(unique = true)
 						private String login;
+						
 						private String senha;
 						private String nome;
 						
@@ -194,6 +198,8 @@
 	criar a Persistencia 
 		no Package > eder.springProject.ProjetoSpring.repository > New > Interface > UserRepository
 			
+			//anotar com @Repository
+			@Repository
 			public interface UserRepository extends JpaRepository<user, Long>{
 	
 			}
@@ -309,3 +315,975 @@
 		Revisão do JDK, JRE e Compilação de Projeto.
 			https://projetojavaweb.com/certificado-aluno/plataforma-curso/aulaatual/473240914/idcurso/1/idvideoaula/754
 		
+	9.2 - ]
+		Gerando Jar executável da Aplicação Spring Boot
+			Incialmente o maven reclamou que na versão 17 do java, e apresentou alguma problema com esse versão.
+			- alterado 
+				no pom.xml
+				add - 
+					<version>0.0.1-SNAPSHOT</version>
+					<packaging>jar</packaging>
+					<properties>
+						<java.version>1.8</java.version>
+						<maven.test.skip>true</maven.test.skip>
+					</properties>
+			
+			- alterar
+				 - em Windows > Preferences > JDK > 1.8
+				 - em Project > Properties > Java Build Path  Order and Export > 1.8
+				 - em Project > Properties > Project Facets > Java > 1.8
+				 
+		9.2.1 - 
+			Em  C:\Users\z0167207\git\EderSpringRESTAPI\ProjetoSpring 
+				executar no powershell
+					#mvn package -e
+					
+				na pasta \target o mvn deverá criar todos pacotes necessários para a fim de criar o projeto
+					[INFO] Replacing main artifact with repackaged archive
+					[INFO] ------------------------------------------------------------------------
+					[INFO] BUILD SUCCESS
+					[INFO] ------------------------------------------------------------------------
+					[INFO] Total time:  48.114 s
+					[INFO] Finished at: 2022-09-16T17:16:05-03:00
+					[INFO] ------------------------------------------------------------------------
+					
+				ao final na pasta na pasta \target terá um arquivo 
+					ex: ProjetoSpring-0.0.1-SNAPSHOT.jar
+				
+				que pode ser executado no cmd com seguinte comando:
+					 java -jar .\ProjetoSpring-0.0.1-SNAPSHOT.jar
+					 
+		- Assim já dá ter acesso de qualquer dispositivo na rede ao sistema sem usar a IDE.
+		
+	9.3 - ]
+		Gerando WAR e Implantando no Servidor
+			- alterado 
+				no pom.xml
+				add - 
+					<version>0.0.1-SNAPSHOT</version>
+					<packaging>war</packaging>
+		9.3.1 - 
+			Em  C:\Users\z0167207\git\EderSpringRESTAPI\ProjetoSpring 
+				executar no powershell
+					#mvn package -e			
+					
+			na pasta \target o mvn deverá criar o arquivo ProjetoSpring-0.0.1-SNAPSHOT.war
+				[INFO] Replacing main artifact with repackaged archive
+				[INFO] ------------------------------------------------------------------------
+				[INFO] BUILD SUCCESS
+				[INFO] ------------------------------------------------------------------------
+				[INFO] Total time:  12.112 s
+				[INFO] Finished at: 2022-09-16T18:11:44-03:00
+				[INFO] ------------------------------------------------------------------------
+				
+			9.3.2 - copiar esse arquivo ProjetoSpring-0.0.1-SNAPSHOT.war para a pasta C:\apache-tomcat-10.0.23\webapps do servidor tomcat no servidor
+				
+		- Assim quando o servdior for startado o War que estiver nessa pasta \webapps vai subir.
+		
+10 - ]
+	Criando Relacionamento um para muitos
+		cria no package eder.springProject.ProjetoSpring.model
+			new > class > userTelephone
+				atualizar 
+				
+				@Entity //para virar uma tabela no banco 
+				public class userTelephone {
+
+					//id auto incremental
+					@Id
+					@GeneratedValue(strategy = GenerationType.AUTO)
+					private Long id;
+
+					private String numero;
+
+					//quando criar a tabela, já criar a chave estrangeira 
+					@org.hibernate.annotations.ForeignKey(name = "user_id")
+					//informar que esse tabela tem realicionamento muitos para um usuario	
+					@ManyToOne
+					private user User;
+					
+				/*CRIAR OS GETTRS E SETTERS*/
+				
+		10.1 - ] 
+			na classe user.java	
+				atualizar
+					/*anotação de um usuario pode possuir varios telefones*/
+					@OneToMany(mappedBy = "User", orphanRemoval = true, cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+					private List<userTelephone> telephones = new ArrayList<userTelephone>();
+					// criar uma lista de telefone do tipo telefones
+					
+				/*criar a gettrs e setters*/
+				
+					public List<userTelephone> getTelephones() {
+						return telephones;
+					}
+
+					public void setTelephones(List<userTelephone> telephones) {
+						this.telephones = telephones;
+					}
+		
+					
+	/*SUBIR PARA VERFICAR SE A TABELA TELEPHONE e o RELACIONAMENTO DO TABELA USER FOI CRIAR COM SUCESSO*/
+	
+	
+11 - ]
+	Evitando recursividade e gerando o JSON de pai e filhos
+		na classe userTelephone.java
+			atualizar
+					
+				@JsonIgnore /*anotação que evita recursão de resultado em json*/
+				@org.hibernate.annotations.ForeignKey(name = "user_id")
+				@ManyToOne
+				private user User;
+				
+	
+12 - ]
+	Cadastrando novos usuários telefones no END-POINT
+		- Apesar do cadastro de novos usuarios estar funcinando atraves do Postman:
+					
+					
+			//DADOS INFORMADOS
+			{
+					"id": "",
+					"login": "moises",
+					"senha": "362959",
+					"nome": "Moises da Silva",
+					
+					"telephones": 
+				[
+					{
+						"id": "",
+						"numero": "9996262"
+					},
+					{
+						"id": "",
+						"numero": "3326151"
+					},
+					{
+						"id": "",
+						"numero": "3452162"
+					}
+				]
+			},
+	
+			//RESULTADO 
+			{
+				"id": 26,
+				"login": "moises",
+				"senha": "362959",
+				"nome": "Moises da Silva",
+				"telephones": [
+					{
+						"id": 27,
+						"numero": "99956262"
+					},
+					{
+						"id": 28,
+						"numero": "33248451"
+					},
+					{
+						"id": 29,
+						"numero": "88845621"
+					}
+				]
+			}
+			
+		//não estava conseguindo associar o user_id do usuario cadastrado
+		
+		12.1 - ]
+			Na classe de Controller IndexController.java	
+				atualizar
+			
+				@PostMapping(value = "/caduser", produces = "application/json")
+				public ResponseEntity<user> caduser(@RequestBody user users) {
+					
+					//varer  os registros de telefone
+					for (int pos = 0; pos < users.getTelephones().size(); pos ++) {
+						users.getTelephones().get(pos).setUser(users);
+					}
+					
+				/**FAZER ISSO NO METODO PUT TBM/*/
+				
+			12.1.2 - 
+				e na classe userTelephone.java
+					@JsonIgnore /* anotação que evita recursão de resultado em json */
+					@org.hibernate.annotations.ForeignKey(name = "user_id")
+					@ManyToOne(optional = false) /*ATUALIZAR QUE O CAMPO user_id no Banco passe a ser Obrigatório */
+					private user User;
+
+			
+13 - ]
+	Cross Origin - Configuração em controler especifico
+		13.1 - ]
+			criar em ProjetoSpring\src\main\webapp\index.html
+				<!DOCTYPE html>
+				<html>
+				<head>
+				<meta charset="ISO-8859-1">
+				<title>Insert title here</title>
+				<script src="https://code.jquery.com/jquery-3.4.1.js"
+					integrity="sha256-WpOohJOqMqqyKL9FccASB9O0KwACQJpFTUBLTYOVvVU="
+					crossorigin="anonymous"></script>
+				</head>
+				<body>
+					<script>
+						$(document)
+								.ready(
+
+										function() {
+
+											$
+													.ajax(
+															{
+																url : "http://localhost:8080/springProjectRestAPI/usuario/",
+																method : "GET"
+															}).then(
+															function(data, status, info) {
+
+															});
+
+										});
+					</script>
+
+				</body>
+				</html>
+				
+		13.2 - ]
+			anotar com @CrossOrigin
+				@CrossOrigin /*para permitir todos o metodos da classe possa ser acessadas e utlizado por qualquer origem */
+				@RestController
+				@RequestMapping(value = "/usuario")
+				public class IndexController { 
+				
+				ou 
+				
+				@CrossOrigin(origins = "localhost:8080") /*afim que restrigir que somente requisições dessa origem localhost poderam aceitar requisições da api passando o end-poit em questão */	
+				// get Mappign que retona todos os registro http://localhost:8080/usuario/
+				@GetMapping(value = "/", produces = "application/json")
+				public ResponseEntity<List<user>> userall() {
+				) 
+							
+14 - ]
+	Cross Origin - Configuração centralizada
+		atualizar ProjetoSpringApplication.java
+		public class ProjetoSpringApplication implements WebMvcConfigurer {
+
+			public static void main(String[] args) {
+				SpringApplication.run(ProjetoSpringApplication.class, args);
+			}
+
+			/* MAPEAMENTO GLOBAL */
+			@Override
+			public void addCorsMappings(CorsRegistry registry) {
+				
+				/*qual endpoint,                  qual metodo           e origem*/    
+				registry.addMapping("/usuario/**").allowedMethods("*").allowedOrigins("*");
+
+			}
+
+		}
+		
+	/*PARA TESTAR VAMOS EXECURAR O ARQUIVOS INDEX.HTML POR FORA.*/
+		- executando ele não deve exibir erros no console, porem até o momento 
+		o javascript da pagina acessa a url: http://localhost:8080/springProjectRestAPI/usuario
+		e metodo GET, porem não retorna nada, para um teste, iforme um alert e dos parametros
+		passados, informe um a data + indice + o atributo:
+		
+			=> function(data, status, info) {
+				 alert(data[0].id);
+		
+		o resultado é uma alert:
+			Essa pagina diz
+			2  
+			
+15 - ]
+	Spring Security - Configurando ROLE
+		/*CLASSE QUE REPRESENTA OS PAPEIS "ROLES" DO USUARIOS QUE VÃO ACESSAR O SISTEMA*/
+		- criar em eder.springProject.ProjetoSpring.model > userRole.java
+			atualizar
+				@Entity
+				@Table(name = "user_role")
+				@SequenceGenerator(name = "seq_role", sequenceName = "seq_role", allocationSize = 1, initialValue = 1)
+				public class userRole implements GrantedAuthority {
+
+					/**
+					 * 
+					 */
+					private static final long serialVersionUID = 1L;
+
+					@Id
+					@GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq_role")
+					private Long id;
+
+					private String descricaorole;
+					
+					//criar os gettrs e setters
+					
+		- para implements o GrantedAuthority, requer a depemdencia no pom.xml:
+				<dependency>
+					<groupId>org.springframework.security</groupId>
+					<artifactId>spring-security-web</artifactId>
+					<version>5.6.1</version>
+				</dependency>
+	
+		- em sequida como sugestão do eclipse criar o metodo getAuthority:
+			atualizar
+				@Override
+				public String getAuthority() {
+					return this.descricaoRole;
+				}
+16 - ]
+	Spring Security - Configurando Usuário
+		atualizar	
+			user.java
+				@Entity
+				public class user implements UserDetails {
+					
+			- como sugestão do eclipse criar todos metodos
+				7 methods to implement:
+				 getAuthorities()
+				 getPassword()
+				 getUsername()
+				 isAccountNonExpired()
+				 isAccountNonLocked()
+				 isCredentialsNonExpired()
+				 isEnabled()
+				 
+			- criados o metodos altere todos os return para "true";
+				
+			- atualizar metodos
+				@Override
+				public String getPassword() {
+					return this.senha;
+				}
+
+				@Override
+				public String getUsername() {
+					return this.login;
+				}
+
+				/*acessos do usuario*/	
+				@Override
+				public Collection<? extends GrantedAuthority> getAuthorities() {
+					return null;
+				}
+				
+			- criar um novo private abaixo do telephones
+						/*sempre que carregar o usuario tbm carregar os papeis "roles" dele*/		
+				@OneToMany(fetch = FetchType.EAGER)
+				/*criar uma tabela unica para os acessos que contem o uma coluna com id do user e o id do role + uma constraint "unique_role_user" */
+				@JoinTable(name = "user_on_roles", uniqueConstraints = @UniqueConstraint(columnNames = { "user_id", "role_id" }, name = "unique_role_user"),
+				/*unificando as colunas das tabelas onde a user_id que aponta para a tabela user como refenrecnia  o campo id*/
+				joinColumns = @JoinColumn(name = "user_id", referencedColumnName = "id", table = "user", unique = false, 
+				foreignKey = @ForeignKey(name = "user_fk", value = ConstraintMode.CONSTRAINT)), 
+				
+				/*inverso informando é que campo role_id é fk que aponta para a tabela user_role como refenrecnia o campo id*/ 
+				inverseJoinColumns = @JoinColumn(name = "role_id", referencedColumnName = "id", table = "user_role", unique = false, updatable = false, 
+				foreignKey = @ForeignKey(name = "role_fk", value = ConstraintMode.CONSTRAINT)))
+				
+				private List<userRole> roles;
+				
+				atualizar
+					@Override
+				public Collection<? extends GrantedAuthority> getAuthorities() {
+					return roles;
+				}
+	
+			- testar e verificar se as tabelas e os relacionamento foram criados.	
+		//https://projetojavaweb.com/certificado-aluno/plataforma-curso/aulaatual/0bIpdBwxxWg/idcurso/1/idvideoaula/770
+				
+
+17 - ]
+	Spring Security - Configurando o Repository e o Service
+		em UserRepository
+			atualizar		
+					
+		/*query construida para que em determinado ponto do sistema só temos o login para ser validade, no caso o login ao sistema */	
+		@Query("select u from user u where u.login = ?1")
+		user findUserByLogin(String login);
+		
+		17.1 - ]
+			criar package eder.springProject.ProjetoSpring.service
+				e criar class ImplementacaoUserDetailsSercice.java				
+					atualizar	
+						@Service
+						public class ImplementacaoUserDetailsSercice implements UserDetailsService{
+	
+					@Autowired
+					private UserRepository userRepository;	
+
+					@Override
+					public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+						
+						
+						/*Consulta no banco o usuario*/
+						
+						user usuario = userRepository.findUserByLogin(username);
+						
+						if (usuario == null) {
+							throw new UsernameNotFoundException("Usuário não foi encontrado");
+						}
+						
+						/*Chama o construtor mais complexo com todos os argumentos booleanos definidos como {@code true}.*/
+						return new User(usuario.getLogin(),
+								usuario.getPassword(),
+								usuario.getAuthorities());
+					}
+
+				}
+				
+		/*https://projetojavaweb.com/certificado-aluno/plataforma-curso/aulaatual/ZEu0fZSMisY/idcurso/1/idvideoaula/771*/
+		
+18 - ]
+	Spring Security - Configurando o Spring Security
+		- parte central do spring security (toda a parte de segurança)
+		
+			- atualizar o pom.xml
+				<!-- https://mvnrepository.com/artifact/org.springframework.security/spring-security-config -->
+				<dependency>
+					<groupId>org.springframework.security</groupId>
+					<artifactId>spring-security-config</artifactId>
+					<version>5.6.1</version>
+				</dependency>
+			
+			- 	criar package eder.springProject.ProjetoSpring.security
+				e criar class WebConfigSecurity.java	
+					atualizar
+						
+					/*Mapeaia URL, enderecos, autoriza ou bloqueia acessoa a URL*/
+					@Configuration
+					@EnableWebSecurity
+					public class WebConfigSecurity extends WebSecurityConfigurerAdapter {
+						
+						@Autowired
+						private ImplementacaoUserDetailsSercice implementacaoUserDetailsSercice;
+						
+						/*Configura as solicitações de acesso por Http*/
+						@Override
+						protected void configure(HttpSecurity http) throws Exception {
+
+							/*Ativando a proteção contra usuário que não estão validados por TOKEN*/
+							http.csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+							
+							/*Ativando a permissão para acesso a página incial do sistema EX: sistema.com.br/index*/
+							.disable().authorizeRequests().antMatchers("/").permitAll()
+							.antMatchers("/index").permitAll()
+							
+							/*URL de Logout - Redireciona após o user deslogar do sistema*/
+							.anyRequest().authenticated().and().logout().logoutSuccessUrl("/index")
+							
+							/*Maperia URL de Logout e insvalida o usuário*/
+							.logoutRequestMatcher(new AntPathRequestMatcher("/logout"));
+							
+							/*Filtra requisições de login para autenticação*/
+							
+							
+							/*Filtra demais requisições paa verificar a presenção do TOKEN JWT no HEADER HTTP*/
+						
+						}	
+			
+						@Override
+						protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+
+							/* Service que irá consultar o usuário no banco de dados */
+							auth.userDetailsService(implementacaoUserDetailsSercice)
+
+									/* Padrão de codigição de senha */
+									.passwordEncoder(new BCryptPasswordEncoder());
+
+						}
+
+					}
+					
+		/*https://projetojavaweb.com/certificado-aluno/plataforma-curso/aulaatual/gmvWEPFVARw/idcurso/1/idvideoaula/772*/
+							
+							
+19 - ]
+	Estrututa de classes JWT Token
+		no pom.xml atualizar depemdencia
+			<dependency>
+				<groupId>io.jsonwebtoken</groupId>
+				<artifactId>jjwt</artifactId>
+				<version>0.9.1</version>
+			</dependency>
+		
+	/*https://projetojavaweb.com/certificado-aluno/plataforma-curso/aulaatual/uXWVGrMuYo8/idcurso/1/idvideoaula/776*/
+	
+	19.1 - ]
+		no package eder.springProject.ProjetoSpring.security
+			criar classJWTTokenAutenticacaoService.java
+				atualizar
+					/*Gera o nosso token e também valida o token enviado*/
+				@Service
+				@Component /*injeção de dependencia*/
+				public class JWTTokenAutenticacaoService {
+
+					/*Tempo de validade do Token 2 dias*/
+					private static final long EXPIRATION_TIME = 172800000;
+					
+					/*Uma senha unica para compor a autenticacao e ajudar na segurança*/
+					private static final String SECRET = "SECRET_KEY";
+					
+					/*Prefixo padrão de Token*/
+					private static final String TOKEN_PREFIX = "Bearer";
+					
+					/*identificação do cabeçalho da resposta do token*/
+					private static final String HEADER_STRING = "Authorization";
+					
+		19.2 - ]
+			em classJWTTokenAutenticacaoService.java
+				na sequencia dos "privates"
+					atualizar
+			
+				/*Gerando token de autenticado e adiconando ao cabeçalho e resposta Http no navegador*/
+				public void addAuthentication(HttpServletResponse response , String username) throws IOException {
+					
+					/*Montagem do Token*/
+					String JWT = Jwts.builder() /*Chama o gerador de Token*/
+									.setSubject(username) /*Adicona o usuario para gerar o token*/
+									.setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME)) /*Tempo de expiração*/
+									.signWith(SignatureAlgorithm.HS512, SECRET).compact(); /*Compactação e algoritmos de geração de senha*/
+					
+					/*Junta token com o prefixo*/
+					String token = TOKEN_PREFIX + " " + JWT; /*Bearer 87878we8we787w8e78w78e78w7e87w*/
+					
+					/*Adiciona no cabeçalho http*/
+					response.addHeader(HEADER_STRING, token); /*Authorization: Bearer 87878we8we787w8e78w78e78w7e87w*/
+					
+					/*Escreve token como responsta no corpo http*/
+					response.getWriter().write("{\"Authorization\": \""+token+"\"}");
+					
+				}
+				
+		19.3 - ]
+			em classJWTTokenAutenticacaoService.java
+				na sequencia do metodo gerar token
+					atualizar
+							
+			/*Retorna o usuário validado com token ou caso não sejá valido retorna null, recebe resposta do navegador*/
+			public Authentication getAuhentication(HttpServletRequest request) {
+						
+						/*Pega o token enviado no cabeçalho http, consulta no cabeçalho*/		
+						String token = request.getHeader(HEADER_STRING);
+						/*se for difernte de nulll entra*/
+						if (token != null) {
+							
+							/*Faz a validação do token do usuário na requisição*/
+							String user = Jwts.parser().setSigningKey(SECRET) /*Bearer 87878we8we787w8e78w78e78w7e87w*/
+												/*pegar o token e remover o prefixo dele*/
+												.parseClaimsJws(token.replace(TOKEN_PREFIX, "")) /*87878we8we787w8e78w78e78w7e87w*/
+												/*descompactação e retorna*/
+								.getBody().getSubject(); /*João Silva*/
+											
+				/*AQUI ANTES DESSE IF É NESCESSÁRIO CRIAR UMA OUTRA CLASSE
+				POR DE DENTRO DESSE METODO NÃO ESTAVA DANDO CERTO INJETAR 
+				OS ATRIBUTOS DA INTERFACE DE UserRepository*/
+				
+				19.3.1 - ]
+					- criar no package eder.springProject.ProjetoSpring
+						ApplicationContextLoad.java
+						 atualizar	
+							
+						@Component
+						public class ApplicationContextLoad implements ApplicationContextAware{
+							
+							@Autowired
+							private static ApplicationContext applicationContext;
+
+							@Override
+							public void setApplicationContext(ApplicationContext applicationContext) throws BeansException {
+								
+								this.applicationContext = applicationContext;
+								
+								}
+								
+								public static ApplicationContext getApplicationContext() {
+									return applicationContext;
+								}
+
+						}	
+
+			19.4 - ]
+			em classJWTTokenAutenticacaoService.java
+			na sequencia do metodo gerar token
+					atualizar			
+				
+			/*se usuario diferente de null entra*/
+			if (user != null) {
+					
+				user usuario = ApplicationContextLoad.getApplicationContext()
+									.getBean(UserRepository.class).findUserByLogin(user);
+					
+				if (usuario != null) {
+					/*UsernamePasswordAuthenticationToken é uma classe propria do sprind para trabalhar com token */					
+						return new UsernamePasswordAuthenticationToken(
+								usuario.getLogin(), 
+								usuario.getSenha(),
+								usuario.getAuthorities());
+						
+				}
+			}			
+		}	
+		return null; /*Não autorizado*/		
+	}
+}
+
+		19.5 - ]
+			JSON Web Token (JWT) - Criando a classe JwtLoginFilter
+				no package eder.springProject.ProjetoSpring.security 
+					criar JWTLoginFilter.java
+						atualizar extends AbstractAuthenticationProcessingFilter
+							
+						/*Estabelece o nosso gerenciador de Token*/
+						public class JWTLoginFilter extends AbstractAuthenticationProcessingFilter {
+								
+				19.5.1 - ]
+						- criar metodos
+							attemptAuthentication
+						/* Retorna o usuário ao processar a autenticação */
+						@Override
+						public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response)
+								throws AuthenticationException, IOException, ServletException {
+
+							/* Esta pegando o token para validar */
+							user user = new ObjectMapper().readValue(request.getInputStream(), user.class);
+
+							/*Retorna o usuario login, senha e acessos*/
+							return getAuthenticationManager().
+									authenticate(new UsernamePasswordAuthenticationToken(user.getLogin(), user.getSenha()));
+						}
+				19.5.2 - ]
+						- e o construtor 
+							/* Configurando o gerenciador de autenticacao */
+							protected JWTLoginFilter(String url, AuthenticationManager authenticationManager) {
+								/* Obriga a autenticar a URL */
+								super(new AntPathRequestMatcher(url));
+
+								/* Gerenciador de autenticacao */
+								setAuthenticationManager(authenticationManager);
+							}	
+							
+				19.5.3 - ]
+						- metodo de sucesso Ctrl + Space = successfulAuthentication
+							@Override
+							protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain,
+									Authentication authResult) throws IOException, ServletException {		
+								new JWTTokenAutenticacaoService().addAuthentication(response, authResult.getName());
+							}
+
+20 - ]
+	 JSON Web Token (JWT) - Criando a classe JwtApiAutenticacaoFilter
+		no package	eder.springProject.ProjetoSpring.security
+			criar JwtApiAutenticacaoFilter.java
+					atualizar extends GenericFilterBean
+					
+					public class JwtApiAutenticacaoFilter extends GenericFilterBean {
+						
+						20.1 - criar metodo doFilter
+						atualizar
+							@Override
+							public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+									throws IOException, ServletException {
+
+								/* Estabelece a autenticação para a requisição */
+
+								Authentication authentication = new JWTTokenAutenticacaoService()
+										.getAuhentication((HttpServletRequest) request);
+
+								/* Coloca o processo de autenticação no spring security */
+								SecurityContextHolder.getContext().setAuthentication(authentication);
+
+								/* Continua o processo */
+
+								chain.doFilter(request, response);
+							}
+
+					}
+						
+						
+			20.1 - ]
+				atualizar WebConfigSecurity
+					@Override
+					protected void configure(HttpSecurity http) throws Exception {
+
+						/* Ativando a proteção contra usuário que não estão validados por TOKEN */
+						http.csrf().csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+
+								/*
+								 * Ativando a permissão para acesso a página incial do sistema EX:
+								 * sistema.com.br/index
+								 */
+								.disable().authorizeRequests().antMatchers("/").permitAll().antMatchers("/index").permitAll()
+
+								/* URL de Logout - Redireciona após o user deslogar do sistema */
+								.anyRequest().authenticated().and().logout().logoutSuccessUrl("/index")
+
+								/* Maperia URL de Logout e insvalida o usuário */
+								.logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
+
+								/* Filtra requisições de login para autenticação */
+								.and().addFilterBefore(new JWTLoginFilter("/login", authenticationManager()), 
+										UsernamePasswordAuthenticationFilter.class)
+
+								/* Filtra demais requisições paa verificar a presenção do TOKEN JWT no HEADER  HTTP */
+								.addFilterBefore(new JwtApiAutenticacaoFilter(), UsernamePasswordAuthenticationFilter.class);
+
+					}
+						
+
+21 - ]
+	TESTE DE FUNCIONABILIDADE 
+		/*https://www.projetojavaweb.com/certificado-aluno/plataforma-curso/aulaatual/6XcxDBWwFsM/idcurso/1/idvideoaula/780*/
+		
+		Para fazer teste é necessário:
+			- ter no banco de dados o login e senha para o exemplo:
+				usaremos login: admin e senha 99999, na senha devida ao metodo configure do WebConfigSecurity
+				esta usando o "BCryptPasswordEncoder" assim é preciso no banco esteja criptografado
+				nesse caso senha 99999 = $2y$10$MWjqsnOFJHHKel7VLmoRk.iGr1J0jfFLQXTH2XeJJiW6/NblbgOHG
+			
+			- atraves da ferramenta postman com o metodo POST,
+				- informar a url localhost:8080/springProjectRestAPI/login
+				- editar o json   { "login": "admin", "senha": "99999" }
+				- Send =>
+				
+			No Postman deve retornar o status 200 Ok + a Authorization
+				{"Authorization": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTY2NDM0NDcxOH0.LqSgU2Sl7O9VYCjZ9jlFu-KMCQUSSXTPyx4JIWZswBcMcnpElMlSJrw7EfnNsu4GpsFZII9VDlbtWMhem2pkEQ"}
+				
+			Result no console da IDE:
+				Hibernate: select user0_.id as id1_0_, user0_.login as login2_0_, user0_.nome as nome3_0_, user0_.senha as senha4_0_ from user user0_ where user0_.login=?
+				Hibernate: select roles0_.user_id as user_id1_1_0_, roles0_.role_id as role_id2_1_0_, userrole1_.id as id1_2_1_, userrole1_.descricaorole as descrica2_2_1_, userrole1_.status as status3_2_1_ from user_on_roles roles0_ inner join user_role userrole1_ on roles0_.role_id=userrole1_.id where roles0_.user_id=?
+				
+			
+		21.1 - ]
+			JSON Web Token (JWT) - Consultando e Deletando
+			/*https://www.projetojavaweb.com/certificado-aluno/plataforma-curso/aulaatual/hrFRpQtgNC4/idcurso/1/idvideoaula/782*/
+			
+			Para fazer a consulta dos dados da API utilizando os metodos criados no IndexController, antes a gente 
+			apenas passa a url porex: localhost:8080/springProjectRestAPI/usuario/ nesse mapeamento / ele iri localizar um
+			metodo Get e tras todos os registros.
+			Agora como o sistema obriga a passarmo o token gerado anteriormente:
+				- no Postman informe a url localhost:8080/springProjectRestAPI/usuario/
+				- e na ABA "Authentication" > Type "Bearer Token" > informe o token gerado 
+					eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTY2NDM0NDcxOH0.LqSgU2Sl7O9VYCjZ9jlFu-KMCQUSSXTPyx4JIWZswBcMcnpElMlSJrw7EfnNsu4GpsFZII9VDlbtWMhem2pkEQ				
+				
+				- Send
+				
+				- O Postman deve retornar o resultado:
+					 {
+						"id": 1,
+						"login": "admin",
+						"senha": "$2y$10$MWjqsnOFJHHKel7VLmoRk.iGr1J0jfFLQXTH2XeJJiW6/NblbgOHG",
+						"nome": "Administrador Sistema",
+						"telephones": [
+							{
+								"id": 59,
+								"numero": "14 9995623"
+							},
+							{
+								"id": 60,
+								"numero": "19 2342523"
+							},
+							{
+								"id": 61,
+								"numero": "11 88874541"
+							}
+						],
+												
+							
+		21.2 - ]
+			JSON Web Token (JWT) - Cadastrando e editando
+				atulizar o metodos gravar e atualizar do indexController, para que ao ser informada a senha possa 
+				ser cadastrada de forma criptografado.
+				
+					@PostMapping(value = "/caduser", produces = "application/json")
+					public ResponseEntity<user> caduser(@RequestBody user users) {
+						
+						//varer  os registros de telefone
+						for (int pos = 0; pos < users.getTelephones().size(); pos ++) {
+							users.getTelephones().get(pos).setUser(users);
+						}
+
+						/*criptografar senha antes de gravar*/
+						String keyBCrypt = new BCryptPasswordEncoder().encode(users.getSenha());
+						users.setSenha(keyBCrypt);
+						user usersave = userRepository.save(users);
+
+						return new ResponseEntity<user>(usersave, HttpStatus.OK);
+
+					}
+
+					// PUT Mappign que grava um novo regsitro na tabela
+					// http://localhost:8080/caduser/
+					@PutMapping(value = "/caduser", produces = "application/json")
+					public ResponseEntity<user> update (@RequestBody user users) {
+
+						//varer  os registros de telefone
+						for (int pos = 0; pos < users.getTelephones().size(); pos ++) {
+							users.getTelephones().get(pos).setUser(users);
+						}
+						
+						/*incluir outra rotinas antes de atualizar*/
+						user usertmp = userRepository.findUserByLogin(users.getLogin());
+		
+						/* verificar se a senha que estiver vindo foi atulizada */
+						if (!usertmp.getSenha().equals(users.getSenha())) {
+
+							/* criptografar senha antes de atualizar */
+							String keyBCrypt = new BCryptPasswordEncoder().encode(users.getSenha());
+							users.setSenha(keyBCrypt);
+
+						}	
+						
+						user usersave = userRepository.save(users);
+
+						return new ResponseEntity<user>(usersave, HttpStatus.OK);
+
+					}
+					
+			- No Postman informe :
+				- Metodo POST
+				- na url localhost:8080/springProjectRestAPI/usuario/caduser/
+				- e na ABA "Authentication" > Type "Bearer Token" > informe o token gerado 
+					eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTY2NDM0NDcxOH0.LqSgU2Sl7O9VYCjZ9jlFu-KMCQUSSXTPyx4JIWZswBcMcnpElMlSJrw7EfnNsu4GpsFZII9VDlbtWMhem2pkEQ	
+	
+				- os dados do json		
+				
+				    {
+						"id": "",
+						"login": "Moacir",
+						"senha": "77845",
+						"nome": "Moacir Sistema",
+						"bcryptpasswordencoder": "senha 77845",
+						"telephones": [
+							{
+								"id": "",
+								"numero": "14 661215831"
+							},
+							{
+								"id": "",
+								"numero": "19 11512121"
+							},
+							{
+								"id": "",
+								"numero": "11 1154211"
+							}
+						]        
+					}
+		
+				- para o PUT a mesma coisa porem informando o id gerado.
+				
+22 - ]
+	 Versionamento de API
+		- atraves de proprio indexController podemos acrescentar um cabeçalho headers = "x-api-key=1"
+			@GetMapping(value = "/{id}", produces = "application/json", headers = "x-api-key=1" )
+				- nesse caso a url no POSTMan permanece com antes 
+					localhost:8080/springProjectRestAPI/usuario/1
+					
+				- porem na Headers 
+					temos que informar na coluna Key = x-api-key com o value 1 ou 2
+					de acordo com o Get que queremos obter da versão da API-REST*************
+				
+		- esse Versinamento de API é utilizado para caso que o mesma URL possa ser acessa porem com headers diferentes
+			temos outra instrução de metodo, ou seja no get acima só busca por um id especifico porem ao informar o headers
+			diferente a API pode trazer o id em questão e muitas mais coisas.
+			
+			
+23 - ]
+	Pool de conexão com Hikari
+		- configuração necessária afim de conseguir mais agilidade do sistema
+			no pom.xml	atualizar	
+				<dependency>
+					<groupId>com.zaxxer</groupId>
+					<artifactId>HikariCP</artifactId>
+					<version>4.0.3</version>
+				</dependency>
+		
+		- no application.properties
+			#############################################################
+			##########Pool de conexão com Hikari#########################
+			#############################################################
+
+			#número máximo de milissegundos que um cliente aguardará por uma conexão
+			spring.datasource.hikari.connection-timeout = 20000 
+
+			#número mínimo de conexões inativas mantidas pelo HikariCP em um conjunto de conexões
+			spring.datasource.hikari.minimum-idle= 10
+
+			#Máximo do pool de conexão
+			spring.datasource.hikari.maximum-pool-size= 40
+
+			#Tempo ociosos para conexão
+			spring.datasource.hikari.idle-timeout=10000 
+
+			#salvando dados no banco automaticamente
+			spring.datasource.hikari.auto-commit =true
+							
+						
+24 - ]
+	Implementando o cache para performance
+		- forma de deixar o sistema preparado para trabalhar com cache afim de agilizar o processo em cache	
+			- no pom.xml atualizar depemdencia
+				<dependency>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-cache</artifactId>
+				</dependency>
+				
+			- em ProjetoSpringApplication.java	
+				anotar com 
+					@EnableCaching /*anotação da depemdencia de cache de memoria*/
+					
+			
+			- e em IndexController.java
+					anotar com 
+						@Cacheable /*anota que agiliza o processo lentos em cache*/
+		
+		/*NÃO DEU MUITO CERTO O PROGRAMA GEROU ERROS */
+		
+		***************************
+		APPLICATION FAILED TO START
+		***************************
+
+		Description:
+
+		Failed to configure a DataSource: 'url' attribute is not specified and no embedded datasource could be configured.
+
+		Reason: Failed to determine a suitable driver class
+
+
+		Action:
+
+		Consider the following:
+			If you want an embedded database (H2, HSQL or Derby), please put it on the classpath.
+			If you have database settings to be loaded from a particular profile you may need to activate it (no profiles are currently active).
+		
+			
+			
+25 - ]
+	Conhecendo diferença entre CacheEvict e o CachePUT
+		na classe de controller indexController
+			- no metodo GetMapping
+				@GetMapping(value = "/", produces = "application/json")
+				@CacheEvict(value="cacheusuarios", allEntries = true) /*essa anotação limpas cache poucos usados*/
+				@CachePut("cacheusuarios") /*essa atuliza novos informações, update cache*/
+				
+			
+26 - ]
+	JSON Web Token (JWT) - Autenticação com TOKEN em banco de dados
+		em user.java	
+			atualizar	
+				private String token_user;
+				
+				criar getters e setters
+				
+			public String getToken_user() {
+				return token_user;
+			}
+
+			public void setToken_user(String token_user) {
+				this.token_user = token_user;
+			}
+	
+		26.1 - ]
+			em JWTTokenAutenticacaoService.java	
+				atualizar
+					

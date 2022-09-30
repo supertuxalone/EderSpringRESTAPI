@@ -64,10 +64,13 @@ public class JWTTokenAutenticacaoService {
 		/*se for difernte de nulll entra*/
 		if (token != null) {
 			
+			/*pega o token gerado e remove todo prefixo dexando limpo*/
+			String tokenclear = token.replace(TOKEN_PREFIX, "").trim();
+			
 			/*Faz a validação do token do usuário na requisição*/
 			String user = Jwts.parser().setSigningKey(SECRET) /*Bearer 87878we8we787w8e78w78e78w7e87w*/
 								/*pegar o token e remover o prefixo dele*/
-								.parseClaimsJws(token.replace(TOKEN_PREFIX, "")) /*87878we8we787w8e78w78e78w7e87w*/
+								.parseClaimsJws(tokenclear) /*87878we8we787w8e78w78e78w7e87w*/
 								/*descompactação e retorna*/
 								.getBody().getSubject(); /*João Silva*/
 			/*se usuario diferente de null entra*/
@@ -75,15 +78,19 @@ public class JWTTokenAutenticacaoService {
 				
 				/*todo os controles carregados na memoria estão nesse ApplicationContextload*/
 				user usuario = ApplicationContextLoad.getApplicationContext()
-						        .getBean(UserRepository.class).findUserByLogin(user);
+						.getBean(UserRepository.class).findUserByLogin(user);
 				
 				if (usuario != null) {
-					
-					/*UsernamePasswordAuthenticationToken é uma classe propria do sprind para trabalhar com token */
-					return new UsernamePasswordAuthenticationToken(
-							usuario.getLogin(), 
-							usuario.getSenha(),
-							usuario.getAuthorities());					
+						
+					/*vai carregar o resultado se o token enviado por request é mesmo cad no banco token_user */
+					if (tokenclear.equalsIgnoreCase(usuario.getToken_user())) {
+									
+						/*UsernamePasswordAuthenticationToken é uma classe propria do sprind para trabalhar com token */
+						return new UsernamePasswordAuthenticationToken(
+								usuario.getLogin(), 
+								usuario.getSenha(),
+								usuario.getAuthorities());
+					}
 				}
 			}			
 		}	

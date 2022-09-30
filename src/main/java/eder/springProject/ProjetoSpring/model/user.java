@@ -34,6 +34,7 @@ public class user implements UserDetails {
 	private String senha;
 	private String nome;
 	private String bcryptpasswordencoder;
+	private String token_user;
 
 	/* anotação de um usuario pode possuir varios telefones */
 	@OneToMany(mappedBy = "User", orphanRemoval = true, cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -159,5 +160,13 @@ public class user implements UserDetails {
 
 	public void setBcryptpasswordencoder(String bcryptpasswordencoder) {
 		this.bcryptpasswordencoder = bcryptpasswordencoder;
+	}
+
+	public String getToken_user() {
+		return token_user;
+	}
+
+	public void setToken_user(String token_user) {
+		this.token_user = token_user;
 	}
 }
