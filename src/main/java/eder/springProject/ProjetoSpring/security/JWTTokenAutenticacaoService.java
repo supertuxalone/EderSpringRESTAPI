@@ -54,6 +54,12 @@ public class JWTTokenAutenticacaoService {
 		/* Adiciona no cabeçalho http */
 		response.addHeader(HEADER_STRING, token); /* Authorization: Bearer 87878we8we787w8e78w78e78w7e87w */
 
+		/* todo os controles carregados na memoria estão nesse ApplicationContextload */
+		ApplicationContextLoad.getApplicationContext().getBean(UserRepository.class).updateTokenUser(JWT, username);
+		
+		/* Liberando resposta para portas diferentes que usam a API ou caso clientes web */
+		controlalllow(response);
+
 		/* Escreve token como responsta no corpo http */
 		response.getWriter().write("{\"Authorization\": \"" + token + "\"}");
 
@@ -67,49 +73,50 @@ public class JWTTokenAutenticacaoService {
 
 		/* Pega o token enviado no cabeçalho http, consulta no cabeçalho */
 		String token = request.getHeader(HEADER_STRING);
-		
+
 		try {
-		/* se for difernte de nulll entra */
-		if (token != null) {
+			/* se for difernte de nulll entra */
+			if (token != null) {
 
-			/* pega o token gerado e remove todo prefixo dexando limpo */
-			String tokenclear = token.replace(TOKEN_PREFIX, "").trim();
+				/* pega o token gerado e remove todo prefixo dexando limpo */
+				String tokenclear = token.replace(TOKEN_PREFIX, "").trim();
 
-			/* Faz a validação do token do usuário na requisição */
-			String user = Jwts.parser().setSigningKey(SECRET) /* Bearer 87878we8we787w8e78w78e78w7e87w */
-					/* pegar o token e remover o prefixo dele */
-					.parseClaimsJws(tokenclear) /* 87878we8we787w8e78w78e78w7e87w */
-					/* descompactação e retorna */
-					.getBody().getSubject(); /* João Silva */
-			/* se usuario diferente de null entra */
-			if (user != null) {
+				/* Faz a validação do token do usuário na requisição */
+				String user = Jwts.parser().setSigningKey(SECRET) /* Bearer 87878we8we787w8e78w78e78w7e87w */
+						/* pegar o token e remover o prefixo dele */
+						.parseClaimsJws(tokenclear) /* 87878we8we787w8e78w78e78w7e87w */
+						/* descompactação e retorna */
+						.getBody().getSubject(); /* João Silva */
+				/* se usuario diferente de null entra */
+				if (user != null) {
 
-				/* todo os controles carregados na memoria estão nesse ApplicationContextload */
-				user usuario = ApplicationContextLoad.getApplicationContext().getBean(UserRepository.class)
-						.findUserByLogin(user);
+					/* todo os controles carregados na memoria estão nesse ApplicationContextload */
+					user usuario = ApplicationContextLoad.getApplicationContext().getBean(UserRepository.class)
+							.findUserByLogin(user);
 
-				if (usuario != null) {
-
-					/*
-					 * vai carregar o resultado se o token enviado por request é mesmo cad no banco
-					 * token_user
-					 */
-					if (tokenclear.equalsIgnoreCase(usuario.getToken_user())) {
+					if (usuario != null) {
 
 						/*
-						 * UsernamePasswordAuthenticationToken é uma classe propria do sprind para
-						 * trabalhar com token
+						 * vai carregar o resultado se o token enviado por request é mesmo cad no banco
+						 * token_user
 						 */
-						return new UsernamePasswordAuthenticationToken(usuario.getLogin(), usuario.getSenha(),
-								usuario.getAuthorities());
+						if (tokenclear.equalsIgnoreCase(usuario.getToken_user())) {
+
+							/*
+							 * UsernamePasswordAuthenticationToken é uma classe propria do sprind para
+							 * trabalhar com token
+							 */
+							return new UsernamePasswordAuthenticationToken(usuario.getLogin(), usuario.getSenha(),
+									usuario.getAuthorities());
+						}
 					}
 				}
-			}
-		}/*Fim da condição*/
-		}catch (io.jsonwebtoken.ExpiredJwtException e) {
+			} /* Fim da condição */
+		} catch (io.jsonwebtoken.ExpiredJwtException e) {
 			try {
 				response.getOutputStream().println("Expired Token, login again !");
-			} catch (IOException e1) {}
+			} catch (IOException e1) {
+			}
 		}
 		controlalllow(response);
 		return null; /* Não autorizado */

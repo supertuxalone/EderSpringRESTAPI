@@ -33,6 +33,7 @@ public class user implements UserDetails {
 	private String login;
 	private String senha;
 	private String nome;
+	private String CPF;
 	private String bcryptpasswordencoder;
 	private String token_user;
 
@@ -168,5 +169,13 @@ public class user implements UserDetails {
 
 	public void setToken_user(String token_user) {
 		this.token_user = token_user;
+	}
+
+	public String getCPF() {
+		return CPF;
+	}
+
+	public void setCPF(String cPF) {
+		CPF = cPF;
 	}
 }

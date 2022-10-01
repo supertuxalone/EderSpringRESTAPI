@@ -1286,4 +1286,479 @@
 		26.1 - ]
 			em JWTTokenAutenticacaoService.java	
 				atualizar
+					public Authentication getAuhentication(HttpServletRequest request) {
+		
+					/*Pega o token enviado no cabeçalho http, consulta no cabeçalho*/		
+					String token = request.getHeader(HEADER_STRING);
+					/*se for difernte de nulll entra*/
+					if (token != null) {
+						
+						/*pega o token gerado e remove todo prefixo dexando limpo*/
+						String tokenclear = token.replace(TOKEN_PREFIX, "").trim();
+						
+						/*Faz a validação do token do usuário na requisição*/
+						String user = Jwts.parser().setSigningKey(SECRET) /*Bearer 87878we8we787w8e78w78e78w7e87w*/
+											/*pegar o token e remover o prefixo dele*/
+											.parseClaimsJws(tokenclear) /*87878we8we787w8e78w78e78w7e87w*/
+											/*descompactação e retorna*/
+											.getBody().getSubject(); /*João Silva*/
+						/*se usuario diferente de null entra*/
+						if (user != null) {
+							
+							/*todo os controles carregados na memoria estão nesse ApplicationContextload*/
+							user usuario = ApplicationContextLoad.getApplicationContext()
+									.getBean(UserRepository.class).findUserByLogin(user);
+							
+							if (usuario != null) {
+									
+								/*vai carregar o resultado se o token enviado por request é mesmo cad no banco token_user */
+								if (tokenclear.equalsIgnoreCase(usuario.getToken_user())) {
+												
+									/*UsernamePasswordAuthenticationToken é uma classe propria do sprind para trabalhar com token */
+									return new UsernamePasswordAuthenticationToken(
+											usuario.getLogin(), 
+											usuario.getSenha(),
+											usuario.getAuthorities());
+								}
+							}
+						}			
+					}
 					
+27 - ]
+	 Liberação de CORS e Allow em Origin, Headers , Methods e Request
+		- serve para corrigir um erro que acontece na implementação das telas com framework ex "Angular"
+		atualizar	
+			- em JWTTokenAutenticacaoService.java passar novo paremtros "response"
+				/*Retorna o usuário validado com token ou caso não sejá valido retorna null, recebe resposta do navegador*/
+				public Authentication getAuhentication(HttpServletRequest request, HttpServletResponse response) {
+					
+			- em JwtApiAutenticacaoFilter.java  passar novo paremtros "response"
+				atualizar	
+					/* Estabelece a autenticação para a requisição */
+					Authentication authentication = new JWTTokenAutenticacaoService()
+						.getAuhentication((HttpServletRequest) request, (HttpServletResponse) response);
+						
+			- em JWTTokenAutenticacaoService.java criar função e metodo antes do return
+				controlalllow(response);
+				return null; /* Não autorizado */
+				}
+
+				private void controlalllow(HttpServletResponse response) {
+					if (response.getHeader("Access-Control-Allow-Origin") == null) {
+						response.addHeader("Access-Control-Allow-Origin", "*");
+					}
+					if (response.getHeader("Access-Control-Allow-Headers") == null) {
+						response.addHeader("Access-Control-Allow-Headers", "*");
+					}
+					if (response.getHeader("Access-Control-Request-Headers") == null) {
+						response.addHeader("Access-Control-Request-Headers", "*");
+					}
+					if (response.getHeader("Access-Control-Allow-Methods") == null) {
+						response.addHeader("Access-Control-Allow-Methods", "*");
+					}
+
+				}
+				
+			- atualizar a chamada da função em 
+				public void addAuthentication(HttpServletResponse response, String username) throws IOException {
+
+					/* Montagem do Token */
+					String JWT = Jwts.builder() /* Chama o gerador de Token */
+							.setSubject(username) /* Adicona o usuario para gerar o token */
+							.setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME)) /* Tempo de expiração */
+							.signWith(SignatureAlgorithm.HS512, SECRET)
+							.compact(); /* Compactação e algoritmos de geração de senha */
+
+					/* Junta token com o prefixo */
+					String token = TOKEN_PREFIX + " " + JWT; /* Bearer 87878we8we787w8e78w78e78w7e87w */
+
+					/* Adiciona no cabeçalho http */
+					response.addHeader(HEADER_STRING, token); /* Authorization: Bearer 87878we8we787w8e78w78e78w7e87w */
+									
+					/*Liberando resposta para portas diferentes que usam a API ou caso clientes web*/
+					controlalllow(response);
+					
+					/* Escreve token como responsta no corpo http */
+					response.getWriter().write("{\"Authorization\": \"" + token + "\"}");
+
+				}
+28 - ]
+	/*Centralizar as msg de erros para o usuario que esteja consumindo nossa API */
+		- Controle de erros da API com @ControllerAdvice, @RestControllerAdvice e @ExceptionHandler
+			 no package eder.springProject.ProjetoSpring criar ObjectErrors.java
+				atualizar	
+						package eder.springProject.ProjetoSpring;
+
+						public class ObjectErrors {
+
+							private String error;
+							private String code;
+
+							public String getError() {
+								return error;
+							}
+
+							public void setError(String error) {
+								this.error = error;
+							}
+
+							public String getCode() {
+								return code;
+							}
+
+							public void setCode(String code) {
+								this.code = code;
+							}
+
+						}
+						
+			28.1 - ]
+				e criar o class ControllException,java
+					atualizar
+						
+						@RestControllerAdvice
+						@ControllerAdvice
+						public class ControllException extends ResponseEntityExceptionHandler {
+							
+							/*qualquer erro que gerar execeção Exception, RuntimeException ou Throwable*/
+							/*sera interceptada e criar uma lista de msg de errors*/
+							@ExceptionHandler({Exception.class, RuntimeException.class, Throwable.class})
+							@Override
+							protected ResponseEntity<Object> handleExceptionInternal(Exception ex, Object body, HttpHeaders headers,
+									HttpStatus status, WebRequest request) {
+								
+								String msg = "";
+								
+								if (ex instanceof MethodArgumentNotValidException) {
+									List<ObjectError> list = ((MethodArgumentNotValidException) ex).getBindingResult().getAllErrors();
+									for (ObjectError objectError : list) {
+										msg += objectError.getDefaultMessage() + "\n";
+									}
+								}else {
+									msg = ex.getMessage();
+								}
+								
+								ObjectErrors objetoErro = new ObjectErrors();
+								objetoErro.setError(msg);
+								objetoErro.setCode(status.value() + " ==> " + status.getReasonPhrase());
+								
+								return new ResponseEntity<>(objetoErro, headers, status);
+							}
+							
+						}
+
+29 - ]
+		Controle de erros da API - Parte 2
+			ATUALIZAR
+				 ControllException,java IMPLEMTAR METODO ABAIXO
+					/*METODO QUE INTECEPTA OS PRICIPAIUS ERROS QUE POSSAM ACONTECE ENTRE API E BANCO DE DADOS*/
+					@ExceptionHandler({ DataIntegrityViolationException.class, ConstraintViolationException.class,
+							MySQLTimeoutException.class, SQLException.class })
+					protected ResponseEntity<Object> handleExceptionDataIntegry(Exception ex) {
+
+						String msg = "";
+
+						if (ex instanceof DataIntegrityViolationException) {
+							msg = ((DataIntegrityViolationException) ex).getCause().getCause().getMessage();
+						} else if (ex instanceof ConstraintViolationException) {
+							msg = ((ConstraintViolationException) ex).getCause().getCause().getMessage();
+						} else if (ex instanceof MySQLTimeoutException) {
+							msg = ((MySQLTimeoutException) ex).getCause().getCause().getMessage();
+						} else if (ex instanceof SQLException) {
+							msg = ((SQLException) ex).getCause().getCause().getMessage();
+						} else {
+							/* msg padrão */
+							msg = ex.getMessage();
+						}
+
+						/* construção do Objeto Error */
+						ObjectErrors objetoErro = new ObjectErrors();
+						objetoErro.setError(msg);
+						objetoErro.setCode(HttpStatus.INTERNAL_SERVER_ERROR + " ==> " + HttpStatus.INTERNAL_SERVER_ERROR);
+
+						return new ResponseEntity<>(objetoErro, HttpStatus.INTERNAL_SERVER_ERROR);
+
+					}
+					
+30 - ]
+	 Tratamento do TOKEN Expirado
+		 - em JWTTokenAutenticacaoService.java trata o metodo getAuhentication para que em caso de token EXPIRATION_TIME,
+			sera necessário um novo login para geração.
+				atualizar
+			public Authentication getAuhentication(HttpServletRequest request, HttpServletResponse response) {
+
+				/* Pega o token enviado no cabeçalho http, consulta no cabeçalho */
+				String token = request.getHeader(HEADER_STRING);
+					
+				try {
+					/* se for difernte de nulll entra */
+					if (token != null) {
+
+						/* pega o token gerado e remove todo prefixo dexando limpo */
+						String tokenclear = token.replace(TOKEN_PREFIX, "").trim();
+
+						/* Faz a validação do token do usuário na requisição */
+						String user = Jwts.parser().setSigningKey(SECRET) /* Bearer 87878we8we787w8e78w78e78w7e87w */
+								/* pegar o token e remover o prefixo dele */
+								.parseClaimsJws(tokenclear) /* 87878we8we787w8e78w78e78w7e87w */
+								/* descompactação e retorna */
+								.getBody().getSubject(); /* João Silva */
+						/* se usuario diferente de null entra */
+						if (user != null) {
+
+							/* todo os controles carregados na memoria estão nesse ApplicationContextload */
+							user usuario = ApplicationContextLoad.getApplicationContext().getBean(UserRepository.class)
+									.findUserByLogin(user);
+
+							if (usuario != null) {
+
+								/*
+								 * vai carregar o resultado se o token enviado por request é mesmo cad no banco
+								 * token_user
+								 */
+								if (tokenclear.equalsIgnoreCase(usuario.getToken_user())) {
+
+									/*
+									 * UsernamePasswordAuthenticationToken é uma classe propria do sprind para
+									 * trabalhar com token
+									 */
+									return new UsernamePasswordAuthenticationToken(usuario.getLogin(), usuario.getSenha(),
+											usuario.getAuthorities());
+									}
+								}
+						}
+					}/*Fim da condição*/
+				}catch (io.jsonwebtoken.ExpiredJwtException e) {
+						try {
+							response.getOutputStream().println("Expired token, login again !");
+						} catch (IOException e1) {}
+					}
+						controlalllow(response);
+						return null; /* Não autorizado */
+			}
+					
+31 - ]
+	Padrão DTO (Data Transfer Object) dentro de uma API ou projeto
+			- usar DTO quando vai trafergar dados e escontece atributos da classe principal de persitencia
+			por exemplo ocupar a senha o usuario em sem precisa mexer na classe usuario.
+				no package eder.springProject.ProjetoSpring.model criar userDTO.java
+					atualizar	
+						/*classe DTO que recebe somente os atributos que podem ser exibidos no retorno das requisições da classe de controle*/
+						public class userDTO implements Serializable {
+
+							private static final long serialVersionUID = 1L;
+
+							private String userLogin;
+							private String userNome;
+							private String userCPF;
+
+							/*
+							 * construtor responsavel por receber a classe de pesistencia e limitar quais
+							 * atributos podem ser vializados ao usuario
+							 */
+							public userDTO(user user) {
+
+								this.userLogin = user.getLogin();
+								this.userNome = user.getNome();
+								this.userCPF = user.getCPF();
+							}
+
+							/*getters && setters*/
+						}
+
+				31.1 - ]
+					em IndexController.java
+						atualizar um dos metodos, porem esse mesma modificação pode ser realizada em qualquer outro metodo
+						
+							@GetMapping(value = "/{id}", produces = "application/json",  headers = "x-api-key=1")
+							public ResponseEntity<userDTO> userparams(@PathVariable(value = "id") Long id) {
+
+								/* injentando o UserRepository é possivel usar qualquer metodo pronto que a
+								  interface disponibiliza 
+								Apesar de receber a classe userDTO no banco de dados os dados viram da classe user*/
+								Optional<user> usuario = userRepository.findById(id);
+
+								/*alterado para a classe userDTO que contem os atributos que vão retornar na tela*/
+								return new ResponseEntity<userDTO>(new userDTO(usuario.get()), HttpStatus.OK);
+
+							}
+							
+					Result:
+						{
+							"userLogin": "admin",
+							"userNome": "Administrador do Sistema up 0214",
+							"userCPF": null
+						}
+						
+32 - ]
+	Atualizando TOKEN em novo login
+		em UserRepository
+			- criar novo metodo updateTokenUser 
+				
+					/*faz update do token na tebela user*/
+					@Modifying
+					@Transactional
+					@Query(nativeQuery = true, value = "update user set token_user = ?1 where login = ?2")	
+					user updateTokenUser(String login, String token);
+
+			- atulizar JWTTokenAutenticacaoService o metodo addAuthentication
+			public void addAuthentication(HttpServletResponse response, String username) throws IOException {
+
+				/* Montagem do Token */
+				String JWT = Jwts.builder() /* Chama o gerador de Token */
+						.setSubject(username) /* Adicona o usuario para gerar o token */
+						.setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME)) /* Tempo de expiração */
+						.signWith(SignatureAlgorithm.HS512, SECRET)
+						.compact(); /* Compactação e algoritmos de geração de senha */
+
+				/* Junta token com o prefixo */
+				String token = TOKEN_PREFIX + " " + JWT; /* Bearer 87878we8we787w8e78w78e78w7e87w */
+
+				/* Adiciona no cabeçalho http */
+				response.addHeader(HEADER_STRING, token); /* Authorization: Bearer 87878we8we787w8e78w78e78w7e87w */
+
+				/* todo os controles carregados na memoria estão nesse ApplicationContextload */
+				ApplicationContextLoad.getApplicationContext().getBean(UserRepository.class)
+						.updateTokenUser(JWT, username);
+				
+				/*Liberando resposta para portas diferentes que usam a API ou caso clientes web*/
+				controlalllow(response);
+				
+				/* Escreve token como responsta no corpo http */
+				response.getWriter().write("{\"Authorization\": \"" + token + "\"}");
+
+			}
+		
+		32.1 - ]	
+		/*TESTE UNITARIO*/
+		
+			- Atraves do Postman informe com Metodo POST => a url localhost:8080/springProjectRestAPI/login 
+				Body > Raw > Json
+					{
+						"login": "admin",
+						"senha": "1234"
+					}
+					
+					/*os dados de login e senha necessariamente precisam estar presente no banco de dados 
+					previamente*/
+					
+				=> Send
+					
+					resultado:
+					Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTY2NDc4Mzg3OH0.BcsCy1wQSV4CZA2gc4woAKkHmyQ862twnCMiH8MDao-dCH7FL9y1f8o0cY9NR5UWq45EZHWvEX_JOdCKzjFdtw
+					
+			- gerado o token e já atualiza o token na tabela de user o campo token_user 
+				
+			- copiar o token gerado e informar no: 
+				- Headers > Authorization para conseguir obter resultado "ok" nos metodos da classe de controller.
+
+					ex: localhost:8080/springProjectRestAPI/usuario/
+									+
+								Authorization
+									=
+					
+					Resultado:
+					[
+						{
+							"id": 1,
+							"login": "admin",
+							"senha": "$2a$10$N26qZn36TnwBO8mcQnCWNujNsmy949mfOE0fsHN5m4f82CFVAH/we",
+							"nome": "Administrador do Sistema up 0214",
+							"bcryptpasswordencoder": "senha 1234",
+							"token_user": "eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhZG1pbiIsImV4cCI6MTY2NDc5Mzg1MH0.ULG8d_8pLLI7C3HCbgpaOuZLdKwVcE1O6cNVLX0ZE3IuJ3OKZt292jNGPR6ZEVdrX6X_LuoetjxHLRGJEz94PQ",
+							"telephones": [
+								{
+									"id": 290,
+									"numero": "14 99926232"
+								},
+								{
+									"id": 291,
+									"numero": "19 23421234123"
+								},
+								{
+									"id": 292,
+									"numero": "11 523462345"
+								}
+							],
+							"username": "admin",
+							"authorities": [],
+							"cpf": "2222312321"
+						},
+						{
+							"id": 297,
+							"login": "farinha1",
+							"senha": "$2a$10$8Kas3G1iyuMFCAF9XFiZ6.bLtZ4ELS5UFM3w05SCc.sCJsFMg62Fy",
+							"nome": "Farinha3 do Sistema",
+							"bcryptpasswordencoder": "senha 151551",
+							"token_user": null,
+							"telephones": [
+								{
+									"id": 298,
+									"numero": "14 661215831"
+								},
+								{
+									"id": 299,
+									"numero": "19 11512121"
+								},
+								{
+									"id": 300,
+									"numero": "11 1154211"
+								}
+							],
+							"username": "farinha1",
+							"authorities": [],
+							"cpf": "451565131"
+						}
+					]
+			
+			- o Metodo Post de incluir novos registros não chama o metodo de atualização do token_user na tabela do usuario
+			logo ao cadatra um novo registro o campo token_user vai ficar null:
+				{
+					"id": 301,
+					"login": "farinha2",
+					"senha": "$2a$10$Q895sDuouixtaUkjBJvMBexkneRejfGat8e/8/7pJq7k9EIyvgK0y",
+					"nome": "Farinha2 do Sistema",
+					"bcryptpasswordencoder": "senha 6541",
+					"token_user": null,
+					"telephones": [
+						{
+							"id": 302,
+							"numero": "14 661215831"
+						},
+						{
+							"id": 303,
+							"numero": "19 11512121"
+						},
+						{
+							"id": 304,
+							"numero": "11 1154211"
+						}
+					],
+					"username": "farinha2",
+					"authorities": null,
+					"cpf": "451565131"
+				}
+				
+			- para atualizar o token_user basta informar a url localhost:8080/springProjectRestAPI/login 
+				Body > Raw > Json
+					{
+						"login": "farinha2",
+						"senha": "6541"
+					}
+					
+				Resultado:
+					
+				{"Authorization": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJmYXJpbmhhMiIsImV4cCI6MTY2NDc5NjM2OX0.ABeRnymMHbFFjNksPZklgQgV4NIvY2k8u2BUZQdxChEqDMBNA-z0ZwounNCEtCl9hqcLDrMEI0n2PWKHkjjQpg"}
+				
+			- esse novo token gerado tem a mesma validade do primeiro gerado (logico com um certa diferenca de tempo de expiração), entretando ele pode ser usando na validação de do headers > Authorization.
+			
+			- NOta:
+				o metodo getAuhentication em JWTTokenAutenticacaoService.java
+					faz a verificação em
+						/* Pega o token enviado no cabeçalho http, consulta no cabeçalho */
+						String token = request.getHeader(HEADER_STRING);
+						
+				- ele recebe na vaiavel request atraves do um etdo do sprind HttpServletRequest caso o token voltar null
+				o metodo é abortado.
+				
+				

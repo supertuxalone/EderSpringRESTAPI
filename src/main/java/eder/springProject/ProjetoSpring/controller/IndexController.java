@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import eder.springProject.ProjetoSpring.model.user;
+import eder.springProject.ProjetoSpring.model.userDTO;
 import eder.springProject.ProjetoSpring.repository.UserRepository;
 
 @RestController
@@ -30,15 +31,15 @@ public class IndexController {
 	// get Mapping que retona um registro ao se passar o id especifico
 	// http://localhost:8080/usuario/15
 	@GetMapping(value = "/{id}", produces = "application/json",  headers = "x-api-key=1")
-	public ResponseEntity<user> userparams(@PathVariable(value = "id") Long id) {
+	public ResponseEntity<userDTO> userparams(@PathVariable(value = "id") Long id) {
 
-		/*
-		 * injentando o UserRepository é possivel usar qualquer metodo pronto que a
-		 * interface disponibiliza
-		 */
+		/* injentando o UserRepository é possivel usar qualquer metodo pronto que a
+		  interface disponibiliza 
+		Apesar de receber a classe userDTO no banco de dados os dados viram da classe user*/
 		Optional<user> usuario = userRepository.findById(id);
 
-		return new ResponseEntity<user>(usuario.get(), HttpStatus.OK);
+		/*alterado para a classe userDTO que contem os atributos que vão retornar na tela*/
+		return new ResponseEntity<userDTO>(new userDTO(usuario.get()), HttpStatus.OK);
 
 	}
 
